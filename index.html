@@ -150,6 +150,16 @@
 
   .privacy { font-size:.85rem; color:var(--faint); margin:16px 2px; text-align:center; }
 
+  /* coherence nudges — cross-checks of their own numbers, never blockers */
+  .cohere { border:1px solid var(--gold); background:var(--gold-tint); border-radius:12px;
+    padding:16px; margin-bottom:14px; }
+  .cohere h3 { font-family:var(--serif); font-weight:600; font-size:1.05rem; margin:0 0 10px; }
+  .cohere .c { display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    padding:8px 0; border-top:1px solid var(--line-soft); font-size:.93rem; color:var(--ink); }
+  .cohere .c:first-of-type { border-top:none; }
+  .cohere .cfix { white-space:nowrap; color:var(--gold); }
+  .cohere .cfoot { font-size:.8rem; color:var(--faint); margin:10px 0 0; }
+
   /* success + fallback */
   .ok, .fallback { display:none; border:1px solid var(--line); border-radius:12px; background:var(--card);
     padding:20px 16px; margin-top:16px; }
@@ -224,6 +234,10 @@
     <section class="step" data-step="3">
       <h2>Volume &amp; value.</h2>
       <p class="teach">Volume is how many hands you shake; value is what each handshake is worth. <b>Growth problems hide in the gap between them.</b></p>
+      <div class="card">
+        <label style="margin-top:0">Revenue in a typical month <span class="hint">ballpark is fine — we use it to sanity-check the other numbers</span></label>
+        <input type="number" name="monthly_revenue" step="any" min="0" placeholder="e.g. 20000">
+      </div>
       <div class="card" id="m-volume"></div>
       <p class="stepfoot"><em>Same rule:</em> blank means "don't know", and that's fine.</p>
     </section>
@@ -311,6 +325,7 @@
       <h2>One look back, then send.</h2>
       <p class="teach">Your numbers are read <b>on their own terms</b> — no generic benchmarks, no comparisons to strangers.</p>
       <div id="glance"></div>
+      <div id="coherence"></div>
       <button class="send" id="send">Send to my consultant</button>
       <p class="privacy">Goes to your consultant only. No list, no sharing.</p>
       <div style="text-align:center">
@@ -510,7 +525,52 @@ function payloadJSON() {
     gross_margin: val("gross_margin"), pillars: val("pillars"), channels: val("channels"),
     founder_indep: val("founder_indep"), payoff: radio("payoff"),
     their_read: val("their_read"), notes: val("notes"), client_tag: CLIENT_TAG,
+    monthly_revenue: val("monthly_revenue"),
   };
+}
+
+// --- coherence: their own numbers cross-checked against each other; nudges, never blockers ---
+function coherenceChecks() {
+  const n = k => { const v = parseFloat(val(k)); return isNaN(v) ? null : v; };
+  const flags = [];
+  const ltv = n("LTV"), aov = n("TRANSACTION_VALUE"), cac = n("CAC"),
+        conv = n("CONVERSION"), leads = n("LEAD_VOLUME"), churn = n("churn"),
+        rev = n("monthly_revenue"), gm = n("gross_margin"), ref = n("REFERRAL");
+  const comp = radio("compounding");
+  if (ltv != null && aov != null && ltv < aov)
+    flags.push([`A customer's whole lifetime (${ltv.toLocaleString()}) is worth less than one sale (${aov.toLocaleString()}) — usually lifetime is at least one sale. Typo in one of them?`, 2]);
+  if (ltv != null && aov != null && comp === "once" && ltv > aov * 1.5)
+    flags.push([`You said customers mostly buy once, but lifetime value (${ltv.toLocaleString()}) is well above one sale (${aov.toLocaleString()}). Which is right?`, 4]);
+  if (ltv != null && aov != null && comp === "repeat" && ltv <= aov * 1.1)
+    flags.push([`You said customers buy again, but lifetime value (${ltv.toLocaleString()}) is barely more than one sale (${aov.toLocaleString()}) — the repeat buying isn't showing in the number.`, 2]);
+  [[conv, 2], [ref, 3], [churn, 4], [gm, 5]].forEach(([v, step]) => {
+    if (v != null && v > 0 && v < 1)
+      flags.push([`"${v}" looks like a fraction — did you mean ${Math.round(v * 100)}%?`, step]);
+  });
+  if (ltv != null && cac != null && cac > ltv)
+    flags.push([`Winning a customer costs more (${cac.toLocaleString()}) than they're worth (${ltv.toLocaleString()}). If that's real it matters a lot — just confirm it's not a typo.`, 2]);
+  if (churn != null && churn >= 1 && aov != null && ltv != null && val("model") === "saas/subscription") {
+    const implied = aov / (churn / 100);
+    if (ltv > implied * 2.5 || ltv < implied / 2.5)
+      flags.push([`Your churn (${churn}%/mo) implies a lifetime value around ${Math.round(implied).toLocaleString()}, but you entered ${ltv.toLocaleString()} — worth a second look at one of them.`, 2]);
+  }
+  if (rev != null && rev > 0 && leads != null && conv != null && aov != null) {
+    let implied = leads * conv / 100 * aov;
+    if (val("period") === "year") implied = implied / 12;
+    if (implied > 0 && (rev > implied * 3 || rev < implied / 3))
+      flags.push([`Leads × conversion × avg sale implies about ${Math.round(implied).toLocaleString()}/month, but you said revenue is about ${rev.toLocaleString()}/month — a ${rev > implied ? Math.round(rev / implied) : Math.round(implied / rev)}× gap usually means a typo in one of the four.`, 3]);
+  }
+  return flags;
+}
+function renderCoherence() {
+  const box = document.getElementById("coherence");
+  box.innerHTML = "";
+  const flags = coherenceChecks();
+  if (!flags.length) return;
+  box.innerHTML = `<div class="cohere"><h3>Anything look off?</h3>
+    ${flags.map(f => `<div class="c"><span>${f[0]}</span><button type="button" class="btn link cfix" data-step="${f[1]}">fix →</button></div>`).join("")}
+    <p class="cfoot">Not blockers — just your own numbers cross-checked against each other. If they're all truly right, send away.</p></div>`;
+  box.querySelectorAll(".cfix").forEach(b => b.onclick = () => show(+b.dataset.step));
 }
 
 function buildPayload() {
@@ -528,6 +588,7 @@ function buildPayload() {
   L.push(`activation: ${radio("activation")}`);
   L.push(`compounding: ${radio("compounding")}`);
   if (val("gross_margin")) L.push(`gross_margin: ${val("gross_margin")}%`);
+  if (val("monthly_revenue")) L.push(`monthly_revenue: ${val("monthly_revenue")}`);
   if (val("pillars")) L.push(`pillars: ${val("pillars")}`);
   L.push(`channels: ${val("channels")} | founder-independent: ${val("founder_indep")}`);
   L.push(`payoff: ${radio("payoff")}`);
@@ -581,7 +642,7 @@ function show(n) {
   document.getElementById("back").style.visibility = n === 1 ? "hidden" : "visible";
   document.getElementById("mainnav").style.display = "flex";
   document.getElementById("next").style.display = n === TOTAL ? "none" : "";
-  if (n === TOTAL) renderGlance();
+  if (n === TOTAL) { renderGlance(); renderCoherence(); }
   saveDraft();
   window.scrollTo({ top: 0 });
 }

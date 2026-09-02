@@ -23,7 +23,7 @@ const HEADERS = [
   "founder_indep", "payoff", "self_diagnosis", "notes", "submitted",
   // consultant block — filled at diagnosis time:
   "diag_date", "posture", "binding_constraint", "confidence", "frameworks", "status", "followup",
-  "client_tag",
+  "client_tag", "monthly_revenue",
 ];
 
 const METRIC_KEYS = { LTV: "ltv", CAC: "cac", CONVERSION: "conv", LEAD_VOLUME: "leads",
@@ -66,6 +66,7 @@ function buildRow(p) {
   row.notes = str(p.notes, 2000);
   row.submitted = new Date().toISOString().slice(0, 10);
   row.client_tag = str(p.client_tag, 60);
+  row.monthly_revenue = p.monthly_revenue == null || p.monthly_revenue === "" ? "" : num(p.monthly_revenue);
   return HEADERS.map(h => row[h] ?? "");
 }
 
