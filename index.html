@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Growth Diagnostic — Intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground:#0B100D; --panel:#101712; --card:#141D17; --well:#0D1410;
+    --line:#263229; --line-soft:#1C2620;
+    --ink:#ECF1EB; --soft:#A3B3A6; --faint:#6C7D70;
+    --green:#4CAF87; --green-deep:#1F5C45; --green-tint:rgba(76,175,135,.12);
+    --gold:#C9A756; --gold-bright:#DDBC6F; --gold-dim:rgba(201,167,86,.4); --gold-tint:rgba(201,167,86,.1);
+    --ok:#4CAF87;
+    --serif:'Fraunces',Georgia,serif;
+    --sans:'Archivo',system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--ground); }
+  body { margin:0; font:16px/1.55 var(--sans); color:var(--ink); background:var(--ground);
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:28px 18px 72px; }
+
+  /* header */
+  header { text-align:center; margin-bottom:22px; }
+  .wordmark { font-family:var(--serif); font-weight:600; font-size:1.7rem; letter-spacing:.01em; }
+  .brandline { width:54px; height:1px; background:var(--gold); margin:10px auto; }
+  .brandlabel { font-size:.7rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold); }
+
+  /* progress */
+  .progress { display:flex; gap:5px; margin:0 0 8px; }
+  .progress span { flex:1; height:14px; padding:6px 0; background-color:var(--line);
+    background-clip:content-box; cursor:pointer; transition:background-color .3s; }
+  .progress span.done { background-color:var(--gold); }
+  .progress span:hover { background-color:var(--faint); }
+  .progress span.done:hover { background-color:var(--gold-bright); }
+  .stepmeta { font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
+    margin:0 0 20px; text-align:center; }
+
+  /* steps */
+  .step { display:none; animation:rise .35s ease; }
+  .step.active { display:block; }
+  @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { .step { animation:none; } }
+
+  h2 { font-family:var(--serif); font-weight:600; font-size:1.5rem; line-height:1.25;
+    margin:0 0 10px; text-wrap:balance; }
+  .teach { border-left:2px solid var(--gold); padding:2px 0 2px 14px; margin:0 0 22px;
+    color:var(--soft); font-size:.95rem; }
+  .teach b { color:var(--ink); font-weight:500; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:18px 16px; margin-bottom:14px; }
+  .card + .stepfoot { margin-top:4px; }
+  .stepfoot { font-size:.85rem; color:var(--faint); margin:14px 2px 0; }
+  .stepfoot em { color:var(--gold); font-style:normal; }
+
+  label { display:block; font-weight:500; margin:14px 0 6px; }
+  label:first-child { margin-top:0; }
+  .mname { font-family:var(--serif); font-weight:600; font-size:1.06rem; margin:0 0 2px; }
+  .hint { font-weight:400; color:var(--faint); font-size:.85rem; }
+  p.hint { margin:0 0 12px; }
+
+  input[type=text], input[type=number], textarea, select {
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:9px;
+    font:inherit; font-size:1rem; color:var(--ink); background:var(--well); }
+  input::placeholder, textarea::placeholder { color:var(--faint); }
+  input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
+    outline:2px solid var(--gold-dim); outline-offset:1px; }
+  input[type=number] { font-variant-numeric:tabular-nums; }
+  textarea { min-height:84px; resize:vertical; }
+  select { appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--soft) 50%),linear-gradient(135deg,var(--soft) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 55%, calc(100% - 13px) 55%; background-size:5px 5px; background-repeat:no-repeat; }
+
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > div { flex:1 1 150px; }
+
+  /* question micro-labels */
+  .q { display:block; font-size:.78rem; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--faint); margin:16px 0 6px; font-weight:500; }
+
+  /* basis cards — the honesty question gets room */
+  .basiswrap { display:none; }
+  .basiswrap.show { display:block; animation:rise .3s ease; }
+  .basis { border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .basis label { display:block; margin:0; padding:11px 13px; cursor:pointer;
+    border-top:1px solid var(--line-soft); font-weight:400; }
+  .basis label:first-child { border-top:none; }
+  .basis input { position:absolute; opacity:0; }
+  .basis .bt { display:block; font-weight:500; color:var(--soft); }
+  .basis .bd { display:block; font-size:.83rem; color:var(--faint); margin-top:1px; }
+  .basis label:has(input:checked) { background:var(--green-tint); box-shadow:inset 2px 0 0 var(--green); }
+  .basis label:has(input:checked) .bt { color:var(--ink); }
+  .basis label:has(input[value="gut"]:checked) { background:var(--gold-tint); box-shadow:inset 2px 0 0 var(--gold); }
+  .basis label:has(input:focus-visible) { outline:2px solid var(--gold-dim); outline-offset:-2px; }
+
+  /* pills */
+  .pills { display:flex; gap:7px; flex-wrap:wrap; margin-top:8px; align-items:center; }
+  .pills label { margin:0; display:inline-flex; }
+  .pills input { position:absolute; opacity:0; }
+  .pills span { display:inline-block; padding:7px 13px; border:1px solid var(--line); border-radius:999px;
+    cursor:pointer; font-size:.86rem; color:var(--soft); background:var(--panel); user-select:none;
+    transition:border-color .15s, background .15s, color .15s; }
+  .pills input:focus-visible + span { outline:2px solid var(--gold-dim); outline-offset:1px; }
+  .pills input:checked + span { background:var(--green-tint); border-color:var(--green); color:var(--ink); }
+  .pills.honesty label:last-child input:checked + span,
+  .pills input[value="gut"]:checked + span { background:var(--gold-tint); border-color:var(--gold); }
+
+  /* calculators */
+  details.calc { border:1px dashed var(--line); border-radius:9px; padding:9px 13px; margin-top:12px;
+    background:var(--panel); }
+  details.calc summary { cursor:pointer; font-weight:500; font-size:.9rem; color:var(--green); list-style:none; }
+  details.calc summary::before { content:"◈ "; color:var(--gold); }
+  details.calc[open] summary { margin-bottom:10px; }
+  .calcbtn { margin-top:10px; padding:9px 14px; border:1px solid var(--green-deep); color:var(--green);
+    background:transparent; border-radius:8px; font-weight:500; font-size:.9rem; }
+  .calcbtn:hover { border-color:var(--green); }
+  .calcout { display:block; margin-top:8px; color:var(--gold); font-size:.88rem; font-weight:500; min-height:1em;
+    font-variant-numeric:tabular-nums; }
+
+  /* metric blocks */
+  .metric { border-top:1px solid var(--line-soft); padding-top:16px; margin-top:16px; }
+  .metric:first-child { border-top:none; margin-top:0; padding-top:0; }
+
+  /* nav */
+  .nav { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:22px; }
+  button { font:inherit; cursor:pointer; }
+  .btn { border-radius:9px; padding:12px 24px; font-weight:600; min-height:46px; border:1px solid transparent;
+    transition:filter .15s, border-color .15s; }
+  .btn.gold { background:var(--gold); color:#161207; }
+  .btn.gold:hover { background:var(--gold-bright); }
+  .btn.ghost { background:transparent; border-color:var(--line); color:var(--soft); }
+  .btn.ghost:hover { border-color:var(--faint); color:var(--ink); }
+  .btn.link { background:none; border:none; color:var(--faint); text-decoration:underline; font-weight:400; padding:8px; }
+  .send { display:block; width:100%; padding:14px; margin-top:8px; background:var(--gold); color:#161207;
+    border:none; border-radius:10px; font-weight:600; font-size:1.05rem; }
+  .send:hover { background:var(--gold-bright); }
+  .send:disabled { opacity:.5; cursor:default; }
+
+  /* reflections */
+  .glance { border:1px solid var(--gold-dim); background:var(--gold-tint); border-radius:12px;
+    padding:16px; margin-bottom:14px; }
+  .glance h3 { font-family:var(--serif); font-weight:600; font-size:1.05rem; margin:0 0 10px; }
+  .glance .g { padding:8px 0; border-top:1px solid var(--line-soft); font-size:.93rem; color:var(--soft); }
+  .glance .g:first-of-type { border-top:none; }
+  .glance .g b { color:var(--gold); font-weight:600; font-variant-numeric:tabular-nums; }
+  .glance .gfoot { font-size:.8rem; color:var(--faint); margin:10px 0 0; }
+
+  .privacy { font-size:.85rem; color:var(--faint); margin:16px 2px; text-align:center; }
+
+  /* success + fallback */
+  .ok, .fallback { display:none; border:1px solid var(--line); border-radius:12px; background:var(--card);
+    padding:20px 16px; margin-top:16px; }
+  .ok { border-color:var(--green-deep); text-align:center; padding:40px 20px; }
+  .ok .mark { font-family:var(--serif); color:var(--gold); font-size:2rem; }
+  .ok h2 { margin:8px 0 8px; }
+  .ok p { color:var(--soft); margin:0 auto; max-width:44ch; }
+  pre { white-space:pre-wrap; word-break:break-word; background:var(--well); border:1px solid var(--line);
+    border-radius:9px; padding:12px; font-size:.8rem; color:var(--soft); }
+  .copybtn { padding:9px 15px; border:1px solid var(--line); border-radius:8px; background:transparent;
+    color:var(--ink); font-weight:500; }
+  .copybtn:hover { border-color:var(--faint); }
+
+  @media (max-width:480px) { .wrap { padding:20px 13px 60px; } .card { padding:16px 13px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="wordmark">RevOS</div>
+    <div class="brandline"></div>
+    <div class="brandlabel">Growth Diagnostic</div>
+  </header>
+
+  <div class="progress" id="progress" aria-hidden="true"></div>
+  <p class="stepmeta" id="stepmeta"></p>
+
+  <form id="f" onsubmit="return false;">
+
+    <!-- STEP 1 — your business -->
+    <section class="step" data-step="1">
+      <h2>Let's read your business properly.</h2>
+      <p class="teach">A diagnosis is only as honest as its inputs — so this asks for <b>real numbers</b>, and treats "don't know" with respect. About five minutes.</p>
+      <div class="card">
+        <label>Business name / your name</label>
+        <input type="text" name="name" required autocomplete="organization" placeholder="e.g. Meridian Coaching — Sarah">
+        <label>What do you sell? <span class="hint">one line, in your words</span></label>
+        <input type="text" name="sells" required placeholder="e.g. 12-week leadership program for new managers">
+        <div class="row" style="margin-top:14px">
+          <div>
+            <label>Business model</label>
+            <select name="model">
+              <option>coaching</option><option>consulting/service</option><option>agency</option>
+              <option>ecommerce</option><option>saas/subscription</option><option>info-products</option>
+              <option>local-service</option><option>other</option>
+            </select>
+          </div>
+          <div>
+            <label>Currency</label>
+            <select name="currency">
+              <option>USD</option><option>SGD</option><option>MYR</option><option>EUR</option>
+              <option>GBP</option><option>AUD</option><option>IDR</option><option>other</option>
+            </select>
+          </div>
+          <div>
+            <label>Numbers below are per…</label>
+            <select name="period"><option>month</option><option>year</option></select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 — the three pivotal numbers -->
+    <section class="step" data-step="2">
+      <h2>The three numbers that route everything.</h2>
+      <p class="teach" id="teach2">What a customer is <b>worth</b>, what one <b>costs to win</b>, and how many <b>say yes</b>. Most growth advice guesses at least two of these — you're about to do better.</p>
+      <div class="card" id="m-pivotal"></div>
+      <p class="stepfoot"><em>Blank = "don't know."</em> A useful answer — it tells us what to measure first. The little calculators can work a number out from easier ones.</p>
+    </section>
+
+    <!-- STEP 3 — volume & value -->
+    <section class="step" data-step="3">
+      <h2>Volume &amp; value.</h2>
+      <p class="teach">Volume is how many hands you shake; value is what each handshake is worth. <b>Growth problems hide in the gap between them.</b></p>
+      <div class="card" id="m-volume"></div>
+      <p class="stepfoot"><em>Same rule:</em> blank means "don't know", and that's fine.</p>
+    </section>
+
+    <!-- STEP 4 — repeat business & churn -->
+    <section class="step" data-step="4">
+      <h2>Do they stay?</h2>
+      <p class="teach" id="teach4">Customers who stay, buy again, and send friends are the quiet engine of growth. <b>When they leave often says more than how many.</b></p>
+      <div class="card">
+        <label style="margin-top:0" data-t="Do {custs} buy again, or once and drift?">Do customers buy again, or once and drift?</label>
+        <div class="pills" data-name="compounding">
+          <label><input type="radio" name="compounding" value="repeat"><span>They buy again</span></label>
+          <label><input type="radio" name="compounding" value="once"><span>Mostly once</span></label>
+          <label><input type="radio" name="compounding" value="unsure" checked><span>Not sure</span></label>
+        </div>
+        <label>Churn rate <span class="hint" id="churn-hint">subscription/recurring only — % of customers lost per month. Skip otherwise.</span></label>
+        <input type="number" name="churn" step="any" min="0" max="100" placeholder="e.g. 4.5">
+        <div class="basiswrap" id="churn-basiswrap">
+          <span class="q">Where does this number come from?</span>
+          <div class="basis">
+            <label><input type="radio" name="churn_basis" value="books"><span class="bt">From my records</span><span class="bd">pulled from a dashboard, report, or the books</span></label>
+            <label><input type="radio" name="churn_basis" value="calc"><span class="bt">I worked it out</span><span class="bd">estimated from other numbers I know</span></label>
+            <label><input type="radio" name="churn_basis" value="gut"><span class="bt">Gut feel</span><span class="bd">an honest guess from experience</span></label>
+          </div>
+        </div>
+        <span class="q">Compared with ~6 months ago, churn is…</span>
+        <div class="pills" data-name="churn_trend">
+          <label><input type="radio" name="churn_trend" value="better"><span>Better</span></label>
+          <label><input type="radio" name="churn_trend" value="worse"><span>Worse</span></label>
+          <label><input type="radio" name="churn_trend" value="same"><span>About the same</span></label>
+          <label><input type="radio" name="churn_trend" value="cantsay"><span>Can't really say</span></label>
+        </div>
+        <label>When do customers usually leave? <span class="hint">separates an onboarding problem from a loyalty one</span></label>
+        <div class="pills" data-name="activation">
+          <label><input type="radio" name="activation" value="onboarding"><span>Early — first weeks</span></label>
+          <label><input type="radio" name="activation" value="later"><span>Later — after a while</span></label>
+          <label><input type="radio" name="activation" value="unsure" checked><span>Not sure / N.A.</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 5 — context -->
+    <section class="step" data-step="5">
+      <h2>The shape around the numbers.</h2>
+      <p class="teach">Margins, where revenue leans, and how much of the machine is <b>you</b> — context decides which fixes are even possible.</p>
+      <div class="card">
+        <label style="margin-top:0">Gross margin <span class="hint">% kept after the direct costs of delivering one sale</span></label>
+        <input type="number" name="gross_margin" step="any" min="0" max="100" placeholder="e.g. 55">
+        <label>Where does revenue come from? <span class="hint">sources + rough share, e.g. "referrals 60%, ads 30%, walk-in 10%"</span></label>
+        <input type="text" name="pillars">
+        <div class="row" style="margin-top:14px">
+          <div>
+            <label>Customer channels</label>
+            <select name="channels"><option>one main channel</option><option>several channels</option></select>
+          </div>
+          <div>
+            <label>Does the business run without you?</label>
+            <select name="founder_indep"><option>no</option><option>partly</option><option>yes</option></select>
+          </div>
+        </div>
+        <label>What do you most need right now?</label>
+        <div class="pills" data-name="payoff">
+          <label><input type="radio" name="payoff" value="revenue" checked><span>More revenue</span></label>
+          <label><input type="radio" name="payoff" value="time"><span>More time</span></label>
+          <label><input type="radio" name="payoff" value="delegation"><span>Less on my plate</span></label>
+          <label><input type="radio" name="payoff" value="clarity"><span>Clarity on what's wrong</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 6 — your read -->
+    <section class="step" data-step="6">
+      <h2>Now — your read.</h2>
+      <p class="teach">You know things the numbers don't. <b>Where your read and the data disagree, that gap is usually the diagnosis.</b></p>
+      <div class="card">
+        <label style="margin-top:0">What do YOU think the problem is?</label>
+        <textarea name="their_read" placeholder="e.g. We just need more leads — the offer converts fine."></textarea>
+        <label>Anything else that matters? <span class="hint">recent changes, big wins or losses…</span></label>
+        <textarea name="notes"></textarea>
+      </div>
+    </section>
+
+    <!-- STEP 7 — review & send -->
+    <section class="step" data-step="7">
+      <h2>One look back, then send.</h2>
+      <p class="teach">Your numbers are read <b>on their own terms</b> — no generic benchmarks, no comparisons to strangers.</p>
+      <div id="glance"></div>
+      <button class="send" id="send">Send to my consultant</button>
+      <p class="privacy">Goes to your consultant only. No list, no sharing.</p>
+      <div style="text-align:center">
+        <button class="btn link" id="showcopy" type="button">…or copy the answers as text instead</button>
+      </div>
+    </section>
+
+  </form>
+
+  <div class="nav" id="mainnav">
+    <button class="btn ghost" id="back" type="button">Back</button>
+    <button class="btn gold" id="next" type="button">Continue</button>
+  </div>
+
+  <div class="ok" id="ok">
+    <div class="mark">✦</div>
+    <h2>Sent — thank you.</h2>
+    <p>Your consultant will come back with the read: the one thing to fix first, and why. Nothing else for you to do.</p>
+  </div>
+  <div class="fallback" id="fb">
+    <b>Copy this block and message it to us:</b>
+    <pre id="payload"></pre>
+    <button class="copybtn" id="copy">Copy to clipboard</button> <span id="copied" class="hint"></span>
+  </div>
+</div>
+
+<script>
+// Sends same-origin to /api/intake (Vercel serverless -> Google Sheet). Real response
+// codes: success shows only when the row actually landed; failure opens the copy path.
+const CLIENT_TAG = (new URLSearchParams(location.search).get("c") || "").slice(0, 60);
+
+const METRICS = [
+  ["LTV", "{Cust} lifetime value", "what one {cust} is worth over the WHOLE relationship — repeat purchases included", "m-pivotal"],
+  ["CAC", "Cost to win a {cust}", "money (and ads) spent to land one new {cust}", "m-pivotal"],
+  ["CONVERSION", "Conversion rate (%)", "of the people who could buy, how many do", "m-pivotal"],
+  ["LEAD_VOLUME", "New leads per {period}", "how many new potential {custs} raise their hand — enquiries, booked calls, signups, walk-ins", "m-volume"],
+  ["TRANSACTION_VALUE", "Average order / deal size", "typical value of one sale", "m-volume"],
+  ["REFERRAL", "Referral share (%)", "of new {custs}, how many come from existing ones", "m-volume"],
+];
+
+// wording adapts to the business model — presentation only, the payload keys never change
+const MODEL_TERMS = {
+  "coaching": ["client", "clients"],
+  "consulting/service": ["client", "clients"],
+  "agency": ["client", "clients"],
+  "info-products": ["buyer", "buyers"],
+};
+const MODEL_OVERRIDES = {
+  "coaching": {
+    LEAD_VOLUME: ["New enquiries per {period}", "booked calls, applications, DMs that could become clients"] },
+  "consulting/service": {
+    LEAD_VOLUME: ["New enquiries per {period}", "booked calls, referrals-in, requests that could become clients"] },
+  "agency": {
+    LEAD_VOLUME: ["New enquiries per {period}", "booked calls, referrals-in, RFPs that could become clients"] },
+  "ecommerce": {
+    LEAD_VOLUME: ["Store visitors per {period}", "people landing on your store who could buy"],
+    CONVERSION: [null, "of visitors, how many place an order"],
+    TRANSACTION_VALUE: ["Average order value", "the bill for one typical order"] },
+  "saas/subscription": {
+    LEAD_VOLUME: ["New trials / demos per {period}", "signups, trial starts, demo bookings"],
+    CONVERSION: [null, "of trials or demos, how many become paying accounts"],
+    TRANSACTION_VALUE: ["Revenue per account per month", "a typical account's monthly bill"] },
+  "info-products": {
+    LEAD_VOLUME: ["New opt-ins per {period}", "people joining your list or registering for the free thing"],
+    CONVERSION: [null, "of opt-ins, how many buy"] },
+  "local-service": {
+    LEAD_VOLUME: ["New enquiries per {period}", "calls, walk-ins, booking requests"] },
+};
+function terms() {
+  const t = MODEL_TERMS[val("model")] || ["customer", "customers"];
+  return { cust: t[0], custs: t[1], Cust: t[0][0].toUpperCase() + t[0].slice(1),
+           Custs: t[1][0].toUpperCase() + t[1].slice(1),
+           period: val("period") === "year" ? "year" : "month" };
+}
+function sub(s) { const t = terms(); return s.replace(/\{(\w+)\}/g, (_, k) => t[k] ?? _); }
+const BASIS = [
+  ["books","From my records","pulled from a dashboard, report, or the books"],
+  ["calc","I worked it out","estimated from other numbers I know"],
+  ["gut","Gut feel","an honest guess from experience"],
+];
+const TREND = [["better","Better"],["worse","Worse"],["same","About the same"],["cantsay","Can't really say"]];
+
+// inline work-it-out helpers for the numbers people rarely know cold
+const CALCS = {
+  LTV: `<details class="calc"><summary>Not sure? Work it out</summary>
+    <p class="hint">Roughly what one customer is worth over the whole time they stay.</p>
+    <div class="row">
+      <div><label>Average sale <span class="hint">one purchase</span></label><input type="number" id="ltv_avg" step="any" min="0" placeholder="e.g. 50"></div>
+      <div><label>Purchases per year</label><input type="number" id="ltv_freq" step="any" min="0" placeholder="e.g. 4"></div>
+      <div><label>Years they stay <span class="hint">rough</span></label><input type="number" id="ltv_years" step="any" min="0" placeholder="e.g. 3"></div>
+    </div>
+    <button type="button" class="calcbtn" data-calc="ltv">Work it out → fill LTV above</button>
+    <span class="calcout" id="ltv_out"></span></details>`,
+  CAC: `<details class="calc"><summary>Not sure? Work it out</summary>
+    <p class="hint">What you spend on marketing + sales to win one new customer.</p>
+    <div class="row">
+      <div><label>Spent on marketing + sales <span class="hint">in a typical month</span></label><input type="number" id="cac_spend" step="any" min="0" placeholder="e.g. 2000"></div>
+      <div><label><span data-t="New {custs}">New customers</span> <span class="hint">that same month</span></label><input type="number" id="cac_new" step="any" min="0" placeholder="e.g. 10"></div>
+    </div>
+    <button type="button" class="calcbtn" data-calc="cac">Work it out → fill CAC above</button>
+    <span class="calcout" id="cac_out"></span></details>`,
+  CONVERSION: `<details class="calc"><summary>Not sure? Work it out</summary>
+    <p class="hint">Of the people who could buy, how many actually do.</p>
+    <div class="row">
+      <div><label>Leads / enquiries <span class="hint">in a typical month</span></label><input type="number" id="conv_leads" step="any" min="0" placeholder="e.g. 200"></div>
+      <div><label><span data-t="How many became {custs}">How many became customers</span></label><input type="number" id="conv_cust" step="any" min="0" placeholder="e.g. 20"></div>
+    </div>
+    <button type="button" class="calcbtn" data-calc="conv">Work it out → fill conversion above</button>
+    <span class="calcout" id="conv_out"></span></details>`,
+};
+
+for (const [key, title, hint, home] of METRICS) {
+  const d = document.createElement("div");
+  d.className = "metric";
+  d.innerHTML = `<p class="mname" data-mname="${key}">${sub(title)}</p><p class="hint" data-mhint="${key}">${sub(hint)}</p>
+    <input type="number" name="${key}" step="any" min="0"${key === "CONVERSION" || key === "REFERRAL" ? ' max="100"' : ""}>
+    <div class="basiswrap">
+      <span class="q">Where does this number come from?</span>
+      <div class="basis">${BASIS.map(([v,t,desc]) =>
+        `<label><input type="radio" name="${key}_basis" value="${v}"><span class="bt">${t}</span><span class="bd">${desc}</span></label>`).join("")}</div>
+    </div>
+    <span class="q">Compared with ~6 months ago, this is…</span>
+    <div class="pills">${TREND.map(([v,t]) =>
+      `<label><input type="radio" name="${key}_trend" value="${v}"><span>${t}</span></label>`).join("")}</div>
+    ${CALCS[key] || ""}`;
+  document.getElementById(home).appendChild(d);
+  d.querySelector(`input[name="${key}"]`).addEventListener("input", e => {
+    d.querySelector(".basiswrap").classList.toggle("show", !!e.target.value.trim());
+  });
+}
+
+// re-render every model/period-sensitive string (presentation only — payload keys fixed)
+function applyWording() {
+  const ov = MODEL_OVERRIDES[val("model")] || {};
+  for (const [key, title, hint] of METRICS) {
+    const o = ov[key] || [];
+    const t = document.querySelector(`[data-mname="${key}"]`);
+    const h = document.querySelector(`[data-mhint="${key}"]`);
+    if (t) t.textContent = sub(o[0] || title);
+    if (h) h.textContent = sub(o[1] || hint);
+  }
+  document.querySelectorAll("[data-t]").forEach(n => { n.textContent = sub(n.dataset.t); });
+  const ch = document.getElementById("churn-hint");
+  if (ch) ch.textContent = val("model") === "saas/subscription"
+    ? "% of accounts lost per month — for a subscription business this number matters most"
+    : "subscription/recurring only — % of customers lost per month. Skip otherwise.";
+  const t2 = document.getElementById("teach2");
+  if (t2) t2.innerHTML = sub("What a {cust} is <b>worth</b>, what one <b>costs to win</b>, and how many <b>say yes</b>. Most growth advice guesses at least two of these — you're about to do better.");
+  const t4 = document.getElementById("teach4");
+  if (t4) t4.innerHTML = sub("{Custs} who stay, buy again, and send friends are the quiet engine of growth. <b>When they leave often says more than how many.</b>");
+}
+const periodSel = document.forms.f.elements.period;
+document.forms.f.elements.model.addEventListener("change", applyWording);
+periodSel.addEventListener("change", applyWording);
+applyWording();
+
+// --- number helpers: fill the pivotal boxes from easy inputs ---
+function fillMetric(key, value) {
+  const el = document.forms.f.elements[key];
+  if (!el) return;
+  el.value = value; el.dispatchEvent(new Event("input"));
+  const b = document.querySelector(`input[name="${key}_basis"][value="calc"]`);
+  if (b) b.checked = true;   // worked out via the helper = "I worked it out"
+  saveDraft();
+}
+document.querySelectorAll(".calcbtn").forEach(btn => {
+  btn.onclick = () => {
+    const num = id => parseFloat(document.getElementById(id).value) || 0;
+    const c = btn.dataset.calc, out = document.getElementById(c + "_out");
+    if (c === "ltv") {
+      const v = num("ltv_avg") * num("ltv_freq") * num("ltv_years");
+      if (v > 0) { fillMetric("LTV", Math.round(v)); out.textContent = `LTV ≈ ${Math.round(v)} — filled in above ✓`; }
+      else out.textContent = "Fill the three boxes first.";
+    } else if (c === "cac") {
+      const n = num("cac_new"), v = n ? num("cac_spend") / n : 0;
+      if (v > 0) { fillMetric("CAC", Math.round(v)); out.textContent = `CAC ≈ ${Math.round(v)} — filled in above ✓`; }
+      else out.textContent = "Fill spend + new customers first.";
+    } else if (c === "conv") {
+      const l = num("conv_leads"), v = l ? (num("conv_cust") / l) * 100 : 0;
+      if (v > 0) { fillMetric("CONVERSION", +v.toFixed(1)); out.textContent = `Conversion ≈ ${v.toFixed(1)}% — filled in above ✓`; }
+      else out.textContent = "Fill leads + customers first.";
+    }
+  };
+});
+
+function val(n) { const el = document.forms.f.elements[n]; return el ? (el.value || "").trim() : ""; }
+function radio(n) { const el = document.querySelector(`input[name="${n}"]:checked`); return el ? el.value : "-"; }
+
+function payloadJSON() {
+  const metrics = {};
+  for (const [key] of METRICS)
+    metrics[key] = { value: val(key), basis: radio(key + "_basis"), trend: radio(key + "_trend") };
+  metrics.CHURN = { value: val("churn"), basis: radio("churn_basis"), trend: radio("churn_trend") };
+  return {
+    name: val("name"), sells: val("sells"), model: val("model"), currency: val("currency"),
+    period: val("period"), metrics, activation: radio("activation"), compounding: radio("compounding"),
+    gross_margin: val("gross_margin"), pillars: val("pillars"), channels: val("channels"),
+    founder_indep: val("founder_indep"), payoff: radio("payoff"),
+    their_read: val("their_read"), notes: val("notes"), client_tag: CLIENT_TAG,
+  };
+}
+
+function buildPayload() {
+  const L = ["REV11 INTAKE v2"];
+  L.push(`name: ${val("name")}`);
+  if (CLIENT_TAG) L.push(`client: ${CLIENT_TAG}`);
+  L.push(`sells: ${val("sells")}`);
+  L.push(`model: ${val("model")} | currency: ${val("currency")} | period: ${val("period")}`);
+  for (const [key] of METRICS) {
+    const v = val(key);
+    L.push(`${key}: ${v || "?"} | ${v ? radio(key + "_basis") : "-"} | ${radio(key + "_trend")}`);
+  }
+  const ch = val("churn");
+  L.push(`CHURN: ${ch || "?"} | ${ch ? radio("churn_basis") : "-"} | ${radio("churn_trend")}`);
+  L.push(`activation: ${radio("activation")}`);
+  L.push(`compounding: ${radio("compounding")}`);
+  if (val("gross_margin")) L.push(`gross_margin: ${val("gross_margin")}%`);
+  if (val("pillars")) L.push(`pillars: ${val("pillars")}`);
+  L.push(`channels: ${val("channels")} | founder-independent: ${val("founder_indep")}`);
+  L.push(`payoff: ${radio("payoff")}`);
+  if (val("their_read")) L.push(`their read: ${val("their_read").replace(/\n/g, " ")}`);
+  if (val("notes")) L.push(`notes: ${val("notes").replace(/\n/g, " ")}`);
+  L.push(`submitted: ${new Date().toISOString().slice(0, 10)}`);
+  return L.join("\n");
+}
+
+// --- reflections: their own arithmetic handed back, no verdicts, no benchmarks ---
+function renderGlance() {
+  const box = document.getElementById("glance");
+  box.innerHTML = "";
+  const n = k => parseFloat(val(k));
+  const cur = val("currency") || "";
+  const ltv = n("LTV"), cac = n("CAC"), aov = n("TRANSACTION_VALUE"), gm = n("gross_margin");
+  const lines = [];
+  if (ltv > 0 && cac > 0)
+    lines.push(sub(`One {cust} costs <b>${cur} ${cac.toLocaleString()}</b> to win and is worth <b>${cur} ${ltv.toLocaleString()}</b> over their run — <b>${(ltv/cac).toFixed(1)}×</b> back.`));
+  if (aov > 0 && gm > 0 && cac > 0) {
+    const gross = aov * gm / 100;
+    if (gross < cac)
+      lines.push(sub(`A first sale brings about <b>${cur} ${Math.round(gross).toLocaleString()}</b> gross against <b>${cur} ${cac.toLocaleString()}</b> to win the {cust} — the first sale doesn't pay for itself yet; repeat business carries it (≈<b>${(cac/gross).toFixed(1)}</b> sales to break even).`));
+    else
+      lines.push(sub(`A first sale brings about <b>${cur} ${Math.round(gross).toLocaleString()}</b> gross against <b>${cur} ${cac.toLocaleString()}</b> to win the {cust} — the first sale already pays for the {cust}.`));
+  }
+  if (!lines.length) return;
+  box.innerHTML = `<div class="glance"><h3>Your numbers, reflected</h3>
+    ${lines.map(l => `<div class="g">${l}</div>`).join("")}
+    <p class="gfoot">Just your own arithmetic handed back — no benchmarks, no verdict. The diagnosis itself comes from your consultant.</p></div>`;
+}
+
+// --- wizard ---
+const TOTAL = 7;
+const TITLES = ["Your business","The pivotal numbers","Volume & value","Repeat business","Context","Your read","Review & send"];
+const progress = document.getElementById("progress");
+for (let i = 0; i < TOTAL; i++) {
+  const seg = document.createElement("span");
+  seg.setAttribute("role", "button");
+  seg.setAttribute("aria-label", "Go to step " + (i + 1));
+  seg.addEventListener("click", () => show(i + 1));
+  progress.appendChild(seg);
+}
+let stepNow = 1;
+
+function show(n) {
+  stepNow = n;
+  document.querySelectorAll(".step").forEach(s => s.classList.toggle("active", +s.dataset.step === n));
+  [...progress.children].forEach((c, i) => c.classList.toggle("done", i < n));
+  document.getElementById("stepmeta").textContent = `Step ${n} of ${TOTAL} — ${TITLES[n-1]}`;
+  document.getElementById("back").style.visibility = n === 1 ? "hidden" : "visible";
+  document.getElementById("mainnav").style.display = "flex";
+  document.getElementById("next").style.display = n === TOTAL ? "none" : "";
+  if (n === TOTAL) renderGlance();
+  saveDraft();
+  window.scrollTo({ top: 0 });
+}
+document.getElementById("next").onclick = () => {
+  if (stepNow === 1) {
+    for (const nm of ["name", "sells"]) {
+      const el = document.forms.f.elements[nm];
+      if (!el.value.trim()) { el.reportValidity(); el.focus(); return; }
+    }
+  }
+  show(Math.min(stepNow + 1, TOTAL));
+};
+document.getElementById("back").onclick = () => show(Math.max(stepNow - 1, 1));
+
+// --- draft persistence (per-viewer convenience; survives an interrupted fill) ---
+function saveDraft() {
+  try {
+    const d = { step: stepNow, v: {}, r: {} };
+    for (const el of document.forms.f.elements) {
+      if (!el.name) continue;
+      if (el.type === "radio") { if (el.checked) d.r[el.name] = el.value; }
+      else d.v[el.name] = el.value;
+    }
+    localStorage.setItem("rev11-intake", JSON.stringify(d));
+  } catch {}
+}
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem("rev11-intake") || "null");
+    if (!d) return;
+    for (const [k, v] of Object.entries(d.v || {})) { const el = document.forms.f.elements[k]; if (el && v) el.value = v; }
+    for (const [k, v] of Object.entries(d.r || {})) {
+      const el = document.querySelector(`input[name="${k}"][value="${v}"]`); if (el) el.checked = true;
+    }
+    if (d.step > 1 && d.step <= TOTAL) stepNow = d.step;
+  } catch {}
+}
+document.forms.f.addEventListener("input", saveDraft);
+function clearDraft() { try { localStorage.removeItem("rev11-intake"); } catch {} }
+
+function showFallback() {
+  document.getElementById("payload").textContent = buildPayload();
+  document.getElementById("fb").style.display = "block";
+  document.getElementById("fb").scrollIntoView({ behavior: "smooth" });
+}
+
+document.getElementById("showcopy").onclick = () => {
+  if (!document.forms.f.reportValidity()) { show(1); return; }
+  showFallback();
+};
+
+document.getElementById("copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById("payload").textContent);
+    document.getElementById("copied").textContent = "copied ✓";
+  } catch { document.getElementById("copied").textContent = "select the text and copy manually"; }
+};
+
+const send = document.getElementById("send");
+send.onclick = async () => {
+  if (!document.forms.f.reportValidity()) { show(1); return; }
+  send.disabled = true; send.textContent = "Sending…";
+  try {
+    const r = await fetch("/api/intake", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(payloadJSON()) });
+    if (!r.ok) throw new Error("send failed " + r.status);
+    document.forms.f.style.display = "none";
+    document.getElementById("mainnav").style.display = "none";
+    document.getElementById("progress").style.display = "none";
+    document.getElementById("stepmeta").style.display = "none";
+    document.getElementById("ok").style.display = "block";
+    clearDraft();
+  } catch {
+    send.disabled = false; send.textContent = "Send to my consultant";
+    showFallback();  // real failure -> copy path, said honestly
+    const msg = document.querySelector("#fb b");
+    if (msg) msg.textContent = "Sending didn't go through — copy this block and message it to us instead:";
+  }
+};
+
+document.forms.f.elements.churn.addEventListener("input", e => {
+  document.getElementById("churn-basiswrap").classList.toggle("show", !!e.target.value.trim());
+});
+
+loadDraft();
+// re-reveal basis blocks for values restored from the draft
+for (const [key] of METRICS) {
+  const el = document.forms.f.elements[key];
+  if (el && el.value.trim()) {
+    const w = el.closest(".metric").querySelector(".basiswrap");
+    if (w) w.classList.add("show");
+  }
+}
+if (document.forms.f.elements.churn.value.trim())
+  document.getElementById("churn-basiswrap").classList.add("show");
+applyWording();   // draft may have restored a different model/period
+show(stepNow);
+</script>
+</body>
+</html>
