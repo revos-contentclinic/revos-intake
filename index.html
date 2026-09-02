@@ -557,8 +557,12 @@ function coherenceChecks() {
   if (rev != null && rev > 0 && leads != null && conv != null && aov != null) {
     let implied = leads * conv / 100 * aov;
     if (val("period") === "year") implied = implied / 12;
-    if (implied > 0 && (rev > implied * 3 || rev < implied / 3))
-      flags.push([`Leads × conversion × avg sale implies about ${Math.round(implied).toLocaleString()}/month, but you said revenue is about ${rev.toLocaleString()}/month — a ${rev > implied ? Math.round(rev / implied) : Math.round(implied / rev)}× gap usually means a typo in one of the four.`, 3]);
+    // implied = NEW-sales revenue; a repeat/recurring base legitimately sits on top,
+    // so high stated revenue only flags for one-sale businesses. Low always flags.
+    const low = implied > 0 && rev < implied / 3;
+    const highOneSale = comp === "once" && implied > 0 && rev > implied * 3;
+    if (low || highOneSale)
+      flags.push([`Leads × conversion × avg sale implies about ${Math.round(implied).toLocaleString()}/month of new sales, but you said revenue is about ${rev.toLocaleString()}/month — a ${rev > implied ? Math.round(rev / implied) : Math.round(implied / rev)}× gap usually means a typo in one of the four.`, 3]);
   }
   return flags;
 }
