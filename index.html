@@ -531,7 +531,8 @@ function payloadJSON() {
 
 // --- coherence: their own numbers cross-checked against each other; nudges, never blockers ---
 function coherenceChecks() {
-  const n = k => { const v = parseFloat(val(k)); return isNaN(v) ? null : v; };
+  // zero/negative = "none/unknown", never evidence — excluded from every comparison
+  const n = k => { const v = parseFloat(val(k)); return isNaN(v) || v <= 0 ? null : v; };
   const flags = [];
   const ltv = n("LTV"), aov = n("TRANSACTION_VALUE"), cac = n("CAC"),
         conv = n("CONVERSION"), leads = n("LEAD_VOLUME"), churn = n("churn"),
@@ -543,10 +544,21 @@ function coherenceChecks() {
     flags.push([`You said customers mostly buy once, but lifetime value (${ltv.toLocaleString()}) is well above one sale (${aov.toLocaleString()}). Which is right?`, 4]);
   if (ltv != null && aov != null && comp === "repeat" && ltv <= aov * 1.1)
     flags.push([`You said customers buy again, but lifetime value (${ltv.toLocaleString()}) is barely more than one sale (${aov.toLocaleString()}) — the repeat buying isn't showing in the number.`, 2]);
-  [[conv, 2], [ref, 3], [churn, 4], [gm, 5]].forEach(([v, step]) => {
-    if (v != null && v > 0 && v < 1)
+  // Sub-1 rates are not automatically slips — luxury ecom converts at 0.3–1%, great
+  // SaaS churns at 0.5%/mo. Nudge only when absurd (<0.1) or, for conversion,
+  // when revenue context corroborates the x100 reading.
+  const coheres = x => rev != null && x > 0 && rev >= x / 3 && rev <= x * 3;
+  let convCorroborated = false;
+  if (conv != null && conv < 1 && rev != null && leads != null && aov != null)
+    convCorroborated = coheres(leads * conv * aov) && !coheres(leads * conv / 100 * aov);
+  if (conv != null && conv < 1 && (conv < 0.1 || convCorroborated))
+    flags.push([`"${conv}" as a conversion rate looks like a fraction — did you mean ${Math.round(conv * 100)}%?`, 2]);
+  [[ref, 3], [churn, 4]].forEach(([v, step]) => {
+    if (v != null && v < 0.1)
       flags.push([`"${v}" looks like a fraction — did you mean ${Math.round(v * 100)}%?`, step]);
   });
+  if (gm != null && gm < 1)
+    flags.push([`A gross margin of "${gm}%" would mean almost nothing is left per sale — did you mean ${Math.round(gm * 100)}%?`, 5]);
   if (ltv != null && cac != null && cac > ltv)
     flags.push([`Winning a customer costs more (${cac.toLocaleString()}) than they're worth (${ltv.toLocaleString()}). If that's real it matters a lot — just confirm it's not a typo.`, 2]);
   if (churn != null && churn >= 1 && aov != null && ltv != null && val("model") === "saas/subscription") {
