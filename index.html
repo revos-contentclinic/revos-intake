@@ -540,6 +540,14 @@ function coherenceChecks() {
   const comp = radio("compounding");
   if (ltv != null && aov != null && ltv < aov)
     flags.push([`A customer's whole lifetime (${ltv.toLocaleString()}) is worth less than one sale (${aov.toLocaleString()}) — usually lifetime is at least one sale. Typo in one of them?`, 2]);
+  if (rev != null && rev > 0 && leads != null && conv != null && aov != null) {
+    let implied = leads * conv / 100 * aov;
+    if (val("period") === "year") implied = implied / 12;
+    const low = implied > 0 && rev < implied / 3;
+    const highOneSale = comp === "once" && implied > 0 && rev > implied * 3;
+    if (low || highOneSale)
+      flags.push([`Leads × conversion × avg sale implies about ${Math.round(implied).toLocaleString()}/month of new sales, but you said revenue is about ${rev.toLocaleString()}/month — a ${rev > implied ? Math.round(rev / implied) : Math.round(implied / rev)}× gap usually means a typo in one of the four.`, 3]);
+  }
   if (ltv != null && aov != null && comp === "once" && ltv > aov * 1.5)
     flags.push([`You said customers mostly buy once, but lifetime value (${ltv.toLocaleString()}) is well above one sale (${aov.toLocaleString()}). Which is right?`, 4]);
   if (ltv != null && aov != null && comp === "repeat" && ltv <= aov * 1.1)
@@ -566,16 +574,6 @@ function coherenceChecks() {
     if (ltv > implied * 2.5 || ltv < implied / 2.5)
       flags.push([`Your churn (${churn}%/mo) implies a lifetime value around ${Math.round(implied).toLocaleString()}, but you entered ${ltv.toLocaleString()} — worth a second look at one of them.`, 2]);
   }
-  if (rev != null && rev > 0 && leads != null && conv != null && aov != null) {
-    let implied = leads * conv / 100 * aov;
-    if (val("period") === "year") implied = implied / 12;
-    // implied = NEW-sales revenue; a repeat/recurring base legitimately sits on top,
-    // so high stated revenue only flags for one-sale businesses. Low always flags.
-    const low = implied > 0 && rev < implied / 3;
-    const highOneSale = comp === "once" && implied > 0 && rev > implied * 3;
-    if (low || highOneSale)
-      flags.push([`Leads × conversion × avg sale implies about ${Math.round(implied).toLocaleString()}/month of new sales, but you said revenue is about ${rev.toLocaleString()}/month — a ${rev > implied ? Math.round(rev / implied) : Math.round(implied / rev)}× gap usually means a typo in one of the four.`, 3]);
-  }
   return flags;
 }
 function renderCoherence() {
@@ -583,8 +581,13 @@ function renderCoherence() {
   box.innerHTML = "";
   const flags = coherenceChecks();
   if (!flags.length) return;
+  // One nudge reads as care; five read as an audit. Show the 3 strongest
+  // (checks push in severity order); the rest wait until these are settled.
+  const shown = flags.slice(0, 3);
+  const more = flags.length - shown.length;
   box.innerHTML = `<div class="cohere"><h3>Anything look off?</h3>
-    ${flags.map(f => `<div class="c"><span>${f[0]}</span><button type="button" class="btn link cfix" data-step="${f[1]}">fix →</button></div>`).join("")}
+    ${shown.map(f => `<div class="c"><span>${f[0]}</span><button type="button" class="btn link cfix" data-step="${f[1]}">fix →</button></div>`).join("")}
+    ${more > 0 ? `<p class="cfoot">+${more} smaller check${more > 1 ? "s" : ""} — they'll show once these are settled.</p>` : ""}
     <p class="cfoot">Not blockers — just your own numbers cross-checked against each other. If they're all truly right, send away.</p></div>`;
   box.querySelectorAll(".cfix").forEach(b => b.onclick = () => show(+b.dataset.step));
 }
